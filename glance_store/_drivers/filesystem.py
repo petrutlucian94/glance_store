@@ -148,6 +148,15 @@ Possible values:
 Related options:
     * None
 
+"""),
+    cfg.IntOpt('filesystem_store_chunk_size',
+               default=64 * units.Ki,
+               min=1,
+               help="""
+Chunk size, in bytes.
+
+The chunk size used when reading or writing image files.
+
 """)]
 
 MULTI_FILESYSTEM_METADATA_SCHEMA = {
@@ -243,8 +252,6 @@ class Store(glance_store.driver.Store):
                      capabilities.BitMasks.WRITE_ACCESS |
                      capabilities.BitMasks.DRIVER_REUSABLE)
     OPTIONS = _FILESYSTEM_CONFIGS
-    READ_CHUNKSIZE = 64 * units.Ki
-    WRITE_CHUNKSIZE = READ_CHUNKSIZE
     FILESYSTEM_STORE_METADATA = None
 
     def get_schemes(self):
@@ -384,19 +391,18 @@ class Store(glance_store.driver.Store):
         itself, it should raise `exceptions.BadStoreConfiguration`
         """
         if self.backend_group:
-            fdir = getattr(
-                self.conf, self.backend_group).filesystem_store_datadir
-            fdirs = getattr(
-                self.conf, self.backend_group).filesystem_store_datadirs
-            fstore_perm = getattr(
-                self.conf, self.backend_group).filesystem_store_file_perm
-            meta_file = getattr(
-                self.conf, self.backend_group).filesystem_store_metadata_file
+            store_conf = getattr(self.conf, self.backend_group)
         else:
-            fdir = self.conf.glance_store.filesystem_store_datadir
-            fdirs = self.conf.glance_store.filesystem_store_datadirs
-            fstore_perm = self.conf.glance_store.filesystem_store_file_perm
-            meta_file = self.conf.glance_store.filesystem_store_metadata_file
+            store_conf = self.conf.glance_store
+
+        fdir = store_conf.filesystem_store_datadir
+        fdirs = store_conf.filesystem_store_datadirs
+        fstore_perm = store_conf.filesystem_store_file_perm
+        meta_file = store_conf.filesystem_store_metadata_file
+
+        self.chunk_size = store_conf.filesystem_store_chunk_size
+        self.READ_CHUNKSIZE = self.chunk_size
+        self.WRITE_CHUNKSIZE = self.READ_CHUNKSIZE
 
         if not (fdir or fdirs):
             reason = (_("Specify at least 'filesystem_store_datadir' or "

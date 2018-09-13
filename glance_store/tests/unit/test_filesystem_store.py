@@ -43,10 +43,9 @@ class TestStore(base.StoreBaseTest,
     def setUp(self):
         """Establish a clean test environment."""
         super(TestStore, self).setUp()
-        self.orig_chunksize = filesystem.Store.READ_CHUNKSIZE
-        filesystem.Store.READ_CHUNKSIZE = 10
         self.store = filesystem.Store(self.conf)
         self.config(filesystem_store_datadir=self.test_dir,
+                    filesystem_store_chunk_size=10,
                     stores=['glance.store.filesystem.Store'],
                     group="glance_store")
         self.store.configure()
@@ -56,7 +55,6 @@ class TestStore(base.StoreBaseTest,
     def tearDown(self):
         """Clear the test environment."""
         super(TestStore, self).tearDown()
-        filesystem.ChunkedFile.CHUNKSIZE = self.orig_chunksize
 
     def _create_metadata_json_file(self, metadata):
         expected_image_id = str(uuid.uuid4())
@@ -186,6 +184,9 @@ class TestStore(base.StoreBaseTest,
         """Test that 'verifier.update' is called when verifier is provided."""
         verifier = mock.MagicMock(name='mock_verifier')
         self.store.chunk_size = units.Ki
+        self.store.READ_CHUNKSIZE = self.store.chunk_size
+        self.store.WRITE_CHUNKSIZE = self.store.chunk_size
+
         image_id = str(uuid.uuid4())
         file_size = units.Ki  # 1K
         file_contents = b"*" * file_size
